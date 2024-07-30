@@ -8,12 +8,13 @@ from scipy import integrate
 
 WIDTH, HEIGHT = 2900, 1500
 window = pygame.display.set_mode((WIDTH, HEIGHT))
-n_balls = 3
+n_balls = 2
 RADIUS = 10
-PREFERED_DIR = [1, 0]
+PREFERED_DIR = [0, 0]
 CONST_VEL_OF_DIR = 3
 RECENTER = True
 MAX_VEL = 25
+RANDOM_FIRST_HEADING = True
 
 def draw(space, window, draw_options, balls):
     window.fill("white")
@@ -66,7 +67,7 @@ def create_n_balls(n, space, radius, mass):
         balls.append(ball)
 
         # Move to the next position in the snail-like pattern
-        current_x += step_distance * directions[current_direction][0]+np.random.randint(3*RADIUS)
+        current_x += step_distance * directions[current_direction][0]#+np.random.randint(3*RADIUS)
         current_y += step_distance * directions[current_direction][1]
         steps_taken += 1
 
@@ -196,13 +197,14 @@ def dPhi_V_of(Phi, V):
     return dPhi_V
 
 def update_velocity_with_histograms(balls, histograms, dt):
+    global RANDOM_FIRST_HEADING
     N = 16384
     dphi = np.pi / 8192
 
-    alpha0 = 5
-    beta0 = 5
-    alpha1 = 0.1
-    beta1 = 0.1
+    alpha0 = 10
+    beta0 = 1
+    alpha1 = 0.2
+    beta1 = 0.2
     alpha2 = 0
     beta2 = 0
 
@@ -214,10 +216,14 @@ def update_velocity_with_histograms(balls, histograms, dt):
 
     for i, ball in enumerate(balls):
         V = np.zeros(N)
-
+        if RANDOM_FIRST_HEADING:
+            heading = np.random.uniform(-np.pi, np.pi)
+            ball.body.velocity = (5*np.cos(heading), -5*np.sin(heading))
+        else:
+            heading = math.atan2(ball.body.velocity.y, ball.body.velocity.x)
         # Update visual field V from histograms
         for start_angle, end_angle in histograms[i]:
-            heading = math.atan2(ball.body.velocity.y, ball.body.velocity.x)
+            
             start_angle, end_angle = correct_interval(start_angle, end_angle, heading)
             start_bin = int((start_angle + np.pi) / (2 * np.pi) * N)
             end_bin = int((end_angle + np.pi) / (2 * np.pi) * N)
@@ -231,10 +237,12 @@ def update_velocity_with_histograms(balls, histograms, dt):
         # ball.body.velocity += (dt*np.cos(PREFERED_DIR[0])*CONST_VEL_OF_DIR, dt*np.sin(PREFERED_DIR[1])*CONST_VEL_OF_DIR)
         # print(dvel, dpsi)
         psi = math.atan2(-ball.body.velocity.y, ball.body.velocity.x) + dpsi
-        ball.body.velocity += (dvel * np.cos(psi), - dvel * np.sin(psi)) # - in y because using pygame
+        ball.body.velocity += (dvel*np.cos(psi), - dvel*np.sin(psi)) # - in y because using pygame
+        # ball.body.velocity += (CONST_VEL_OF_DIR*np.cos(PREFERED_DIR[0]), CONST_VEL_OF_DIR*np.sin(PREFERED_DIR[1]))
         if np.sqrt(ball.body.velocity.x**2 + ball.body.velocity.y**2)>MAX_VEL:
             ball.body.velocity = (ball.body.velocity/np.linalg.norm(ball.body.velocity))*MAX_VEL
         # print(np.linalg.norm(ball.body.velocity))
+    RANDOM_FIRST_HEADING = False
 
 def plot_values(y):
     # Generate 16384 linearly spaced values between -pi and pi
@@ -356,4 +364,3 @@ def run(window, width, height, radius):
  
 if __name__ == "__main__":
     run(window, WIDTH, HEIGHT, RADIUS)
-
