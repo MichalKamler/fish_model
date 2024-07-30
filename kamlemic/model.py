@@ -8,12 +8,12 @@ from scipy import integrate
 
 WIDTH, HEIGHT = 2900, 1500
 window = pygame.display.set_mode((WIDTH, HEIGHT))
-n_balls = 2
+n_balls = 3
 RADIUS = 10
 PREFERED_DIR = [1, 0]
 CONST_VEL_OF_DIR = 3
 RECENTER = True
-MAX_VEL = 20
+MAX_VEL = 25
 
 def draw(space, window, draw_options, balls):
     window.fill("white")
@@ -53,7 +53,7 @@ def create_n_balls(n, space, radius, mass):
     balls = []
     center_x = WIDTH // 2
     center_y = HEIGHT // 2
-    step_distance = 3*radius  # Distance between each ball
+    step_distance = 6*radius  # Distance between each ball
     directions = [(1, 0), (0, -1), (-1, 0), (0, 1)]  # Right, Up, Left, Down
     current_direction = 0  # Start moving to the right
     current_x, current_y = center_x, center_y
@@ -66,7 +66,7 @@ def create_n_balls(n, space, radius, mass):
         balls.append(ball)
 
         # Move to the next position in the snail-like pattern
-        current_x += step_distance * directions[current_direction][0]
+        current_x += step_distance * directions[current_direction][0]+np.random.randint(3*RADIUS)
         current_y += step_distance * directions[current_direction][1]
         steps_taken += 1
 
@@ -199,8 +199,8 @@ def update_velocity_with_histograms(balls, histograms, dt):
     N = 16384
     dphi = np.pi / 8192
 
-    alpha0 = 10
-    beta0 = 0.5
+    alpha0 = 5
+    beta0 = 5
     alpha1 = 0.1
     beta1 = 0.1
     alpha2 = 0
@@ -227,10 +227,11 @@ def update_velocity_with_histograms(balls, histograms, dt):
             else:
                 V[start_bin:] = 1
                 V[:end_bin] = 1
-        dvel, dpsi = compute_state_variables(np.sqrt(ball.body.velocity.x**2 + ball.body.velocity.y**2), phi, V, 0, 10, alpha0, alpha1, alpha2, beta0, beta1, beta2)
+        dvel, dpsi = compute_state_variables(np.sqrt(ball.body.velocity.x**2 + ball.body.velocity.y**2), phi, V, 0, MAX_VEL, alpha0, alpha1, alpha2, beta0, beta1, beta2)
         # ball.body.velocity += (dt*np.cos(PREFERED_DIR[0])*CONST_VEL_OF_DIR, dt*np.sin(PREFERED_DIR[1])*CONST_VEL_OF_DIR)
-        print(dvel, dpsi)
-        ball.body.velocity += (dt*dvel * np.cos(dpsi), - dt*dvel * np.sin(dpsi)) # - in y because using pygame
+        # print(dvel, dpsi)
+        psi = math.atan2(-ball.body.velocity.y, ball.body.velocity.x) + dpsi
+        ball.body.velocity += (dvel * np.cos(psi), - dvel * np.sin(psi)) # - in y because using pygame
         if np.sqrt(ball.body.velocity.x**2 + ball.body.velocity.y**2)>MAX_VEL:
             ball.body.velocity = (ball.body.velocity/np.linalg.norm(ball.body.velocity))*MAX_VEL
         # print(np.linalg.norm(ball.body.velocity))
